@@ -1,3 +1,12 @@
+---
+title: RAG Document Q&A API
+emoji: 📚
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 # RAG-Powered Document Q&A API
 
 A production-style Retrieval-Augmented Generation API for asking grounded questions over uploaded PDF or text documents. The backend is FastAPI, the vector search layer is FAISS, embeddings come from Hugging Face sentence-transformers, and answer generation uses Hugging Face Inference Providers.
