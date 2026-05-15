@@ -7,7 +7,12 @@ import pytest
 
 from app.pipeline.chunker import TextChunk, chunk_text
 from app.pipeline.document_loader import EmptyDocumentError, UnsupportedDocumentType, extract_text
-from app.pipeline.generator import RetrievedContext, build_prompt
+from app.pipeline.generator import (
+    GenerationError,
+    RetrievedContext,
+    _extract_generated_text,
+    build_prompt,
+)
 from app.pipeline.vector_store import FaissDocumentStore
 
 
@@ -81,6 +86,26 @@ def test_build_prompt_enforces_grounding_instruction():
     assert "I don't know based on the provided document" in prompt
     assert "Only this fact exists." in prompt
     assert "Question: What is the answer?" in prompt
+
+
+def test_extract_generated_text_from_chat_completion_response():
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": "This is the grounded answer.",
+                }
+            }
+        ]
+    }
+
+    assert _extract_generated_text(payload) == "This is the grounded answer."
+
+
+def test_extract_generated_text_raises_provider_error():
+    with pytest.raises(GenerationError, match="model_not_supported"):
+        _extract_generated_text({"error": {"code": "model_not_supported"}})
 
 
 def test_vector_store_persists_searches_and_deletes(tmp_path, monkeypatch):

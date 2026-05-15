@@ -66,8 +66,9 @@ class HuggingFaceGenerator:
             raise GenerationError("Hugging Face generation request failed") from exc
 
         if response.status_code >= 400:
+            detail = response.text.strip().replace("\n", " ")[:500]
             raise GenerationError(
-                f"Hugging Face generation failed with status {response.status_code}"
+                f"Hugging Face generation failed with status {response.status_code}: {detail}"
             )
 
         data = response.json()
