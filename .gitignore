@@ -1,0 +1,8 @@
+.env
+.venv/
+.venv-py314-old/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+data/
+sample_rag_note.txt

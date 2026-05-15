@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAG Document Q&A</title>
+    <style>
+      :root {
+        --ink: #171713;
+        --muted: #64645b;
+        --line: #d7d3c8;
+        --paper: #f7f3e8;
+        --panel: #fffdf6;
+        --accent: #0f6b63;
+        --accent-strong: #084640;
+        --danger: #a33327;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(23, 23, 19, 0.04) 1px, transparent 1px),
+          linear-gradient(rgba(23, 23, 19, 0.04) 1px, transparent 1px),
+          var(--paper);
+        background-size: 28px 28px;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+
+      main {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 24px;
+        align-items: end;
+        border-bottom: 2px solid var(--ink);
+        padding-bottom: 18px;
+        margin-bottom: 22px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(2.2rem, 6vw, 5.4rem);
+        line-height: 0.9;
+        letter-spacing: 0;
+      }
+
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font: 500 1rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 18px;
+        align-items: start;
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+        box-shadow: 0 10px 30px rgba(23, 23, 19, 0.08);
+      }
+
+      h2 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+
+      label {
+        display: block;
+        margin: 14px 0 7px;
+        color: var(--muted);
+        font: 700 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--ink);
+        padding: 11px;
+        font: 500 0.95rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      textarea {
+        min-height: 128px;
+        resize: vertical;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 14px;
+        border: 0;
+        border-radius: 6px;
+        background: var(--accent);
+        color: white;
+        padding: 12px 14px;
+        cursor: pointer;
+        font: 800 0.86rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+
+      button:hover {
+        background: var(--accent-strong);
+      }
+
+      button:disabled {
+        cursor: wait;
+        opacity: 0.65;
+      }
+
+      .status {
+        min-height: 22px;
+        margin-top: 12px;
+        color: var(--muted);
+        font: 600 0.85rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .status.error {
+        color: var(--danger);
+      }
+
+      .answer {
+        min-height: 180px;
+        white-space: pre-wrap;
+        font-size: 1.25rem;
+        line-height: 1.55;
+      }
+
+      .sources {
+        display: grid;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      .source {
+        border-left: 4px solid var(--accent);
+        background: #f4efe1;
+        padding: 12px;
+        border-radius: 4px;
+      }
+
+      .source strong {
+        display: block;
+        margin-bottom: 6px;
+        font: 800 0.78rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+        text-transform: uppercase;
+      }
+
+      .source p {
+        margin: 0;
+        color: var(--muted);
+        font: 500 0.9rem/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      @media (max-width: 820px) {
+        header,
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>RAG Document Q&A</h1>
+        <p>Upload a PDF or text file, index it locally, then ask grounded questions against retrieved source chunks.</p>
+      </header>
+
+      <div class="workspace">
+        <section>
+          <h2>Document</h2>
+          <form id="uploadForm">
+            <label for="file">File</label>
+            <input id="file" name="file" type="file" accept=".pdf,.txt" required />
+            <button id="uploadButton" type="submit">Upload & Index</button>
+          </form>
+
+          <label for="docId">Document ID</label>
+          <input id="docId" placeholder="Generated after upload" />
+
+          <div id="uploadStatus" class="status"></div>
+        </section>
+
+        <section>
+          <h2>Question</h2>
+          <form id="queryForm">
+            <label for="question">Ask</label>
+            <textarea id="question" placeholder="What are the key findings?" required></textarea>
+            <label for="topK">Top K</label>
+            <input id="topK" type="number" min="1" max="20" value="5" />
+            <button id="queryButton" type="submit">Query Document</button>
+          </form>
+
+          <div id="queryStatus" class="status"></div>
+          <div id="answer" class="answer"></div>
+          <div id="sources" class="sources"></div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const uploadForm = document.querySelector("#uploadForm");
+      const queryForm = document.querySelector("#queryForm");
+      const docIdInput = document.querySelector("#docId");
+      const uploadStatus = document.querySelector("#uploadStatus");
+      const queryStatus = document.querySelector("#queryStatus");
+      const answer = document.querySelector("#answer");
+      const sources = document.querySelector("#sources");
+      const params = new URLSearchParams(window.location.search);
+      const API_BASE = params.get("api") || (window.location.protocol === "file:" ? "http://127.0.0.1:8000" : "");
+
+      function setStatus(node, message, isError = false) {
+        node.textContent = message;
+        node.classList.toggle("error", isError);
+      }
+
+      async function parseResponse(response) {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(data.detail || `Request failed with ${response.status}`);
+        }
+        return data;
+      }
+
+      uploadForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = document.querySelector("#uploadButton");
+        button.disabled = true;
+        setStatus(uploadStatus, "Indexing document...");
+        try {
+          const formData = new FormData(uploadForm);
+          const data = await fetch(`${API_BASE}/ingest`, { method: "POST", body: formData }).then(parseResponse);
+          docIdInput.value = data.doc_id;
+          setStatus(uploadStatus, `Indexed ${data.chunks_indexed} chunks from ${data.filename}.`);
+        } catch (error) {
+          setStatus(uploadStatus, error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+
+      queryForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = document.querySelector("#queryButton");
+        button.disabled = true;
+        answer.textContent = "";
+        sources.innerHTML = "";
+        setStatus(queryStatus, "Retrieving context and generating answer...");
+        try {
+          const data = await fetch(`${API_BASE}/query`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              doc_id: docIdInput.value.trim(),
+              question: document.querySelector("#question").value.trim(),
+              top_k: Number(document.querySelector("#topK").value || 5),
+            }),
+          }).then(parseResponse);
+
+          answer.textContent = data.answer;
+          sources.innerHTML = data.sources
+            .map(
+              (source) => `
+                <article class="source">
+                  <strong>Chunk ${source.chunk_index} · Score ${source.score.toFixed(4)}</strong>
+                  <p>${source.text.replace(/[&<>"']/g, (char) => ({
+                    "&": "&amp;",
+                    "<": "&lt;",
+                    ">": "&gt;",
+                    '"': "&quot;",
+                    "'": "&#39;",
+                  })[char])}</p>
+                </article>
+              `,
+            )
+            .join("");
+          setStatus(queryStatus, "Answer generated.");
+        } catch (error) {
+          setStatus(queryStatus, error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
