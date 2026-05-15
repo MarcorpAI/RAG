@@ -78,6 +78,19 @@ If you open `frontend/index.html` directly from disk, pass the API URL:
 file:///path/to/RAG/frontend/index.html?api=http://127.0.0.1:8011
 ```
 
+## Demo Flow
+
+Use a short document with facts that are easy to verify, such as a project brief, policy note, or article excerpt.
+
+1. Start the API and open the frontend.
+2. Upload a `.txt` or `.pdf` file.
+3. Copy the returned document ID if you want to test from cURL.
+4. Ask a question that is answered directly in the document.
+5. Ask a question that is not in the document and confirm the assistant refuses to invent an answer.
+6. Expand the source chunks in the response and compare them with the generated answer.
+
+The key behavior to show is that the answer is grounded in retrieved chunks, not in the model's general memory.
+
 ## API Usage
 
 Ingest a document:
